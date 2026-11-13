@@ -1,0 +1,6 @@
+url: https://github.com/s565729059/dsh-deepseek-code-supervisor
+name: s565729059/dsh-deepseek-code-supervisor
+category: workflow
+description:
+  en: Adds a hard Reflection mode preset to DSH. Once a session starts in it, code and config writes are refused until the bundled review procedure is loaded, every landed edit injects the round's mandatory self-check list, large changes are confirmed with you before a clean-context subagent reviews the diff read-only, and each round closes with a summary and the next step.
+  zh: 给 DSH 加一个硬性的「反思模式」preset。会话一旦以它开启，没加载检测流程之前写代码与配置会被拒；每次成功落盘后自动注入本轮必做的自检清单；大改动先问你，再交干净上下文的子智能体只读复核 diff；每轮收尾给出总结与下一步。
