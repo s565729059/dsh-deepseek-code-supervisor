@@ -27,7 +27,8 @@
     "scripts/",
     "skills/",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs/"
   ],
   "scripts": {
     "test": "node test.js",
