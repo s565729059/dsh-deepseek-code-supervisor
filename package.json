@@ -1,0 +1,75 @@
+{
+  "name": "dsh-deepseek-code-supervisor",
+  "version": "1.7.0",
+  "description": "「反思模式」硬性模式：会话开启后强制二轮自检与终检，每轮收尾给总结与下一步。另含二轮检测 skill。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./guard": "./guard.js",
+    "./verify": "./verify.js",
+    "./retro": "./retro.js",
+    "./shared": "./shared.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "guard.js",
+    "verify.js",
+    "retro.js",
+    "shared.js",
+    "client.js",
+    "test.js",
+    "cordis.patch.yml",
+    "locale/",
+    "presets/",
+    "scripts/",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test.js",
+    "test:scanner": "python skills/deepseek-code-supervisor/scripts/test_scan_risks.py",
+    "release:check": "python scripts/release_check.py",
+    "release:verify": "python scripts/verify_tarball.py",
+    "prepublishOnly": "python scripts/release_check.py"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "agent-preset",
+    "code-review",
+    "reflection",
+    "quality-gate"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml",
+        "./presets/self-reflection.patch.yml"
+      ]
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": ["@deepseek-ai/dsh-client-ui-conversation"]
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s565729059/dsh-deepseek-code-supervisor.git"
+  },
+  "homepage": "https://github.com/s565729059/dsh-deepseek-code-supervisor#readme",
+  "bugs": {
+    "url": "https://github.com/s565729059/dsh-deepseek-code-supervisor/issues"
+  },
+  "author": {
+    "name": "孙建明"
+  },
+  "license": "MIT"
+}

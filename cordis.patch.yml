@@ -1,0 +1,10 @@
+# dsh-deepseek-code-supervisor — host-plane layer: the skill provider.
+#
+# The persona, the code-edit gate and the retrospective injection live inside
+# the `self-reflection` preset (presets/self-reflection.patch.yml), so they
+# apply only to sessions running that mode.
+#
+# Cost: one skill-catalog line per session; the body loads on demand.
+- insert:
+    - id: code-supervisor-skill
+      name: dsh-deepseek-code-supervisor

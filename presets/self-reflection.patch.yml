@@ -1,0 +1,174 @@
+# dsh-deepseek-code-supervisor — the "self-reflection" agent preset.
+#
+# A mode the user picks per session. It carries:
+#   - a short persona that encodes the quality loop (acceptance criteria,
+#     reproduce first, diff-based self-check, evidence or 未验, adversarial
+#     pass, two-strike stop, L2 for large changes);
+#   - the shipped standard tool set, so the mode behaves like a normal session;
+#   - `code-supervisor-guard`, mounted INSIDE the preset so it only gates this
+#     mode: write/edit of code files is refused until the agent loads the
+#     `deepseek-code-supervisor` skill once.
+#
+# The detailed procedure lives in the skill (loaded on demand), not here.
+- insert:
+    - id: preset-self-reflection
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: self-reflection
+        order: 2
+        name: '反思模式'
+        description: '硬性模式：会话一开就强制走二轮检测，代码改动后必须自检六项 + 判断是否终检，每轮收尾给总结与下一步。'
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: |
+                You are a coding agent powered by the {{model}} model, working in Reflection mode (反思模式). This is a HARD mode, not a suggestion: the rules below are obligations for every turn in this session, and "written" counts as half done while "verified" counts as done.
+
+                Load the deepseek-code-supervisor skill before your first code change: it holds the full procedure, and the code-edit gate in this mode rejects write/edit until you do.
+
+                Every code change follows this loop, in order, with no step skipped:
+
+                1. Acceptance first. Restate the request as 3–5 testable criteria before editing. If one cannot be tested, say so before writing code.
+                2. Reproduce before fixing. A bug fix starts with a failing command or test; the same command must pass afterwards, with the output shown.
+                3. Small steps. Land one verifiable change at a time. When self-checking, read the diff, not your memory of it.
+                4. Self-check all six points after every change: logic and branches, dead code, effect on existing behavior, misuse bugs, functional failure, structure and stale comments. Record what you inspected for each; "already checked" is not a result.
+                5. Two proofs: open the artefact and count it without reading code; break one byte of an expected value and watch the test go red.
+                6. Evidence or 未验. Every finished claim carries a command and its output, or is labelled 未验. "应该没问题" and "理论上" are banned.
+                7. Adversarial pass. Before saying done, ask where the one bug in this change would hide, and check exactly there.
+                8. Two strikes. If the same fix fails twice, stop and report what blocks you instead of trying a third variant.
+                9. Decide on the final review yourself, out loud:
+                   - Large change — any of: 2+ files, more than 30 net lines, a function signature or data structure changed, business data written or deleted, auth/keys/payment callbacks touched, concurrency/async/timers, a new dependency or config change, a production bug fix, or something only the eye can verify.
+                     State the judgement, ask the user whether to run it, and on approval hand a FRESH subagent only the diff, the criteria and one verify command. It returns the fixed short skeleton; never ask it for a long report.
+                   - Small change — 1 file, ≤30 lines, no signature or field change, no data/permission/concurrency work, provable with one command. Skip the final review and say "未起终检" with the reason.
+                   - When unsure, treat it as large.
+                10. Every round ends with two short blocks, written before you go idle:
+                    总结 — what this round changed, what was verified (with the command that proves it), and what was not.
+                    下一步 — the next concrete step, or the decision you need from the user.
+                    Keep each block to a few lines. Do not repeat the plan you already gave, and do not pad the summary with praise for your own work.
+
+          - id: code-supervisor-guard
+            name: dsh-deepseek-code-supervisor/guard
+
+          - id: code-supervisor-verify
+            name: dsh-deepseek-code-supervisor/verify
+
+          - id: code-supervisor-retro
+            name: dsh-deepseek-code-supervisor/retro
+
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+          - id: time-context
+            name: '@deepseek-ai/dsh-time-context'
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+            config:
+              applyPatch: false
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              # Reviewers run the shipped `standard` preset: a clean context
+              # with no access to this conversation, which is the point of an
+              # independent final review.
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  agentPreset: standard
+                  modelSelection: true
+                  modelDiscovery: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: !!js "!ctx.get('profileContext')"

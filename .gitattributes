@@ -1,0 +1,20 @@
+# 统一换行符：仓库里一律 LF，检出时不转换。
+# 不设这条时，Windows 上检出会变成 CRLF，把 LF 写死的脚本与断言打挂
+# （本项目的 scan_risks.py 里就有依赖精确换行的正则）。
+* text=auto eol=lf
+
+# 明确按文本处理
+*.js      text eol=lf
+*.mjs     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.py      text eol=lf
+*.txt     text eol=lf
+
+# 二进制，不要做任何转换
+*.tgz     binary
+*.png     binary
+*.jpg     binary
+*.ico     binary

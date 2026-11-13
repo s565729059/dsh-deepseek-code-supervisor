@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Tiechi · Reflection Mode",
+    "description": "A hard quality mode for DeepSeek Harness: once a session starts in it, the whole session runs a two-round review loop. Code writes are gated until the review procedure is loaded, every landed edit injects the round's mandatory checks, large changes are confirmed with you and then handed to a clean-context subagent for an independent final review, and every round closes with a summary and the next step."
+  }
+}

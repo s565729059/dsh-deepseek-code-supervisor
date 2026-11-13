@@ -1,0 +1,93 @@
+{
+  "_comment": "规则表。exts 可写 code / data / py / sh 或具体后缀。加自己的规则直接往下追加，id 保持唯一。这个文件不会被自身扫描。regex 在 Python re.M 下编译；写 CRLF 兼容时要允许 **\\r?$**。",
+  "rules": [
+    {
+      "id": "R01",
+      "level": "BLOCK",
+      "name": "空 catch",
+      "exts": ["code"],
+      "regex": "(?<![.\\w])catch\\s*(?:\\([^)]{0,120}\\))?\\s*\\{\\s*\\}",
+      "why": "错误被吞掉，功能只会「有点不对」，日志里查不到线索。`promise.catch(fn)` 不是 catch 块，用前置断言排除"
+    },
+    {
+      "id": "R02",
+      "level": "BLOCK",
+      "name": "except 后直接 pass",
+      "exts": [".py"],
+      "regex": "except[^\\n:]{0,120}:\\s*(?:#[^\\n]*)?\\r?\\n\\s*pass\\b",
+      "why": "同上。最差也要 log 一行，或在交付说明里写清为什么可以忽略"
+    },
+    {
+      "id": "R03",
+      "level": "WARN",
+      "name": "裸 except",
+      "exts": [".py"],
+      "regex": "^[ \\t]*except[ \\t]*:[ \\t]*\\r?$",
+      "why": "会连 KeyboardInterrupt / SystemExit 一起吞，至少写 except Exception"
+    },
+    {
+      "id": "R04",
+      "level": "BLOCK",
+      "name": "硬编码本机路径",
+      "exts": ["code"],
+      "regex": "(?i)[a-z]:(?:\\\\|/){1,2}users(?:\\\\|/)|/Users/[A-Za-z]|/home/[A-Za-z]",
+      "why": "换台机器就跑不了，发布包里还会泄露用户名"
+    },
+    {
+      "id": "R05",
+      "level": "BLOCK",
+      "name": "疑似密钥写死在代码里",
+      "exts": ["code", "data"],
+      "regex": "(?i)(?:api[_-]?key|secret|token|passwd|password|credential|private[_-]?key|access[_-]?key)\\s*[:=]\\s*['\"]?[A-Za-z0-9_\\-+/=]{12,}|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]{10,}",
+      "why": "进了 git 就等于公开；静态构建还会把它复制进产物。带不带引号都要查"
+    },
+    {
+      "id": "R06",
+      "level": "BLOCK",
+      "name": "危险的递归删除",
+      "exts": ["code"],
+      "regex": "shutil\\.rmtree\\s*\\(|rm\\s+-rf\\s+(?:\\$\\{[A-Za-z_][A-Za-z0-9_]*\\}|\\$[A-Za-z_][A-Za-z0-9_]*|[\"'/]?[A-Za-z_./])|rm\\s+--recursive\\s+--force\\b|del\\s+/[Ss]\\s+/[Qq]|Remove-Item[^\\n|;]*-Recurse[^\\n|;]*-Force",
+      "why": "变量为空时 rm -rf $DIR 会退化成 rm -rf。带 ${VAR:?} 空值守卫的写法自行加 risk:ignore"
+    },
+    {
+      "id": "R07",
+      "level": "BLOCK",
+      "name": "恒真断言 / 空跑测试",
+      "exts": ["code"],
+      "regex": "range\\(1,\\s*1\\)|assertTrue\\(\\s*true\\s*\\)|expect\\(\\s*true\\s*\\)|assert\\s+1\\s*==\\s*1|assertEqual\\(\\s*\\[\\]\\s*,\\s*\\[\\]\\s*\\)|assertEqual\\(\\s*\\{\\}\\s*,\\s*\\{\\}\\s*\\)|assert\\(\\s*True\\s*\\)",
+      "why": "测试永远是绿的，等于没测"
+    },
+    {
+      "id": "R08",
+      "level": "WARN",
+      "name": "TODO / FIXME 残留",
+      "exts": ["code"],
+      "regex": "\\b(?:TODO|FIXME|HACK)\\b",
+      "why": "别把半成品当成品交出去。做不了就说做不了"
+    },
+    {
+      "id": "R09",
+      "level": "WARN",
+      "name": "吞掉标准错误",
+      "exts": [".sh", ".bash", ".py", ".js", ".mjs"],
+      "regex": "2>\\s*/dev/null",
+      "why": "故障看起来像成功。要验退出码就重定向到文件再查 $?"
+    },
+    {
+      "id": "R10",
+      "level": "WARN",
+      "name": "管道吃掉退出码",
+      "exts": [".sh", ".bash"],
+      "regex": "\\|\\s*(?:tail|head)\\b",
+      "why": "python x.py | tail 之后 $? 拿到的是 tail 的退出码"
+    },
+    {
+      "id": "R11",
+      "level": "WARN",
+      "name": "调试断点残留",
+      "exts": ["code"],
+      "regex": "\\bbreakpoint\\s*\\(\\s*\\)|^\\s*import\\s+pdb\\b|^\\s*debugger\\s*;",
+      "why": "断点留在生产代码里会挂住进程"
+    }
+  ]
+}
