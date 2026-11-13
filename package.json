@@ -1,6 +1,6 @@
 {
   "name": "dsh-deepseek-code-supervisor",
-  "version": "1.7.0",
+  "version": "1.0.0",
   "description": "「反思模式」硬性模式：会话开启后强制二轮自检与终检，每轮收尾给总结与下一步。另含二轮检测 skill。",
   "type": "module",
   "main": "index.js",
@@ -54,7 +54,9 @@
     "client": {
       "platform": "web",
       "immediately": true,
-      "inject": ["@deepseek-ai/dsh-client-ui-conversation"]
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
     }
   },
   "engines": {
